@@ -1,0 +1,47 @@
+// English — the reference table. Every other table must have exactly these keys and the same
+// {placeholders} (i18n.test.ts). The play screen itself has no words (design §11): these are
+// the pause menu, the map, the result card and the accessible names.
+export const en = {
+  'park.harbour': 'Harbour',
+  'park.market': 'Market Square',
+  'park.lighthouse': 'Lighthouse Hill',
+  'park.pier': 'The Pier',
+  'park.dune': 'Dune Campsite',
+  'park.sunset': 'Sunset Fair',
+  'map.title': 'Along the promenade',
+  'map.back': 'Back to the car park',
+  'map.locked': 'Opens after {n} more solved in {park}',
+  'map.lot': 'Lot {n}',
+  'map.stars': '{n} of 3 stars',
+  'map.unsolved': 'not solved yet',
+  'board.label': '{park}, lot {n}',
+  'tool.undo': 'Undo',
+  'tool.reset': 'Start again',
+  'tool.hint': 'Hint',
+  'tool.map': 'Car parks',
+  'tool.pause': 'Pause',
+  'tool.sound': 'Sound',
+  'hud.moves': 'Moves: {n}',
+  'hud.shortest': 'Shortest: {n}',
+  'hud.scoops': 'Scoops: {n}',
+  'pause.title': 'Paused',
+  'pause.resume': 'Keep playing',
+  'pause.calm': 'Calm motion',
+  'result.title': 'The van is out!',
+  'result.moves': 'Moves: {moves} · Best: {best}',
+  'result.next': 'Next',
+  'result.replay': 'Play again',
+  'v.van': 'ice-cream van',
+  'v.hatch': 'hatchback',
+  'v.pickup': 'pickup',
+  'v.camper': 'camper van',
+  'v.minibus': 'minibus',
+  'v.planter': 'flower planter',
+  'v.label': '{name}, row {row}, column {col}, {dir}',
+  'v.ud': 'goes up and down',
+  'v.lr': 'goes left and right',
+  'v.held': 'picked up',
+} as const;
+
+export type Key = keyof typeof en;
+export type Table = Record<Key, string>;
