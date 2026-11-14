@@ -1,0 +1,342 @@
+/* Gridlock — a sunny seaside postcard, seen from above (design §9). */
+
+:root {
+  --ink: #213547;
+  --ink-soft: #4b6075;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-edge: rgba(255, 255, 255, 0.9);
+  --accent: #19a7b8;
+  --accent-deep: #0d7f8e;
+  --star: #ffc93c;
+  --ring: #ffffff;
+  --cell: 64px;
+  --slide: 110ms;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans KR', 'Noto Sans SC', sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 0%, #c9f3f5 0%, #8fdde6 45%, #5cc3d4 100%);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+}
+
+button { font: inherit; color: inherit; }
+
+#app { position: fixed; inset: 0; }
+
+/* ---- the play screen ------------------------------------------------------------------ */
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+}
+.screen.portrait { flex-direction: column; }
+.screen.landscape { flex-direction: row; }
+
+.stage {
+  position: relative;
+  flex: none;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(10, 60, 80, 0.28), 0 0 0 4px rgba(255, 255, 255, 0.55);
+  touch-action: none;
+}
+.backdrop { position: absolute; inset: 0; display: block; }
+.layer { position: absolute; left: 0; }
+
+.veh {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+  will-change: transform;
+  z-index: 2;
+}
+.veh:active { cursor: grabbing; }
+.veh .body {
+  position: absolute;
+  inset: 4%;
+  border-radius: 30%;
+}
+.veh .shadow {
+  position: absolute;
+  inset: 8% 6% 0% 10%;
+  border-radius: 34%;
+  background: rgba(30, 30, 40, 0.25);
+  transform: translate(3%, 6%);
+  transition: transform 120ms ease-out, opacity 120ms;
+}
+.veh .rot { position: absolute; }
+.veh .rot svg { display: block; }
+.veh.dragging, .veh.held { z-index: 4; }
+.veh.held .shadow, .veh.dragging .shadow { transform: translate(6%, 12%); opacity: 0.8; }
+.veh.held .body { transform: scale(1.04); }
+
+/* Focus ring: shown while the keyboard is in use (body.kbd), never for touch. */
+body.kbd .veh:focus .body { box-shadow: 0 0 0 4px var(--ring), 0 0 0 7px var(--accent-deep); border-radius: 22%; }
+body.kbd .veh.held .body { box-shadow: 0 0 0 5px var(--accent-deep), 0 0 0 9px var(--ring); }
+
+.chev {
+  position: absolute;
+  width: 34%;
+  max-width: 30px;
+  aspect-ratio: 1;
+  display: none;
+  opacity: 0.35;
+  color: #fff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+  pointer-events: none;
+}
+.chev.can { opacity: 1; }
+.veh.held .chev, .veh.coach .chev, .veh.clear .chev.up { display: block; }
+.veh.coach .chev, .veh.clear .chev.up { animation: chev 1.1s ease-in-out infinite; opacity: 1; }
+.chev svg { width: 100%; height: 100%; }
+
+.planter { position: absolute; z-index: 1; pointer-events: none; }
+
+.ghost {
+  position: absolute;
+  z-index: 1;
+  border: 4px dashed rgba(255, 255, 255, 0.95);
+  border-radius: 26%;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+  animation: ghost 1.2s ease-in-out infinite;
+}
+
+.coach-hint {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  animation: float 1.6s ease-in-out infinite;
+}
+.keycap {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 3px 0 #9fb2c2, 0 4px 10px rgba(0, 0, 0, 0.2);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+}
+.hand { width: 46px; height: 46px; animation: drag-hand 1.6s ease-in-out infinite; }
+
+/* HUD pills on the sea strip */
+.hud {
+  position: absolute;
+  top: 8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  font-weight: 800;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.hud.moves { left: 8px; }
+.hud.scoops { right: 8px; }
+.hud svg { width: 26px; height: 26px; }
+.hud .target { opacity: 0.6; font-weight: 700; font-size: 15px; }
+.hud.plop svg { animation: plop 420ms ease-out; }
+
+/* ---- toolbar -------------------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  flex: none;
+}
+.landscape .toolbar { gap: 8px; }
+.landscape .toolbar { flex-direction: column; flex-wrap: nowrap; }
+
+.tool, .btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(225, 246, 250, 0.75));
+  box-shadow: 0 4px 12px rgba(10, 60, 80, 0.18), inset 0 1px 0 #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--ink);
+  transition: transform 80ms ease-out;
+}
+.tool:active, .btn:active { transform: scale(0.94); }
+.tool:focus-visible, .btn:focus-visible, .lot:focus-visible { outline: 4px solid var(--accent-deep); outline-offset: 3px; }
+.tool.glow { animation: glow 2.4s ease-in-out infinite; }
+.tool[aria-pressed='true'] { background: linear-gradient(180deg, #d9f6f9, #b8e9ef); }
+
+/* ---- overlays: pause, result, map ------------------------------------------------------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(20, 70, 90, 0.28);
+}
+.panel {
+  min-width: min(320px, 100%);
+  max-width: 420px;
+  padding: 22px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 18px 50px rgba(10, 60, 80, 0.35), inset 0 1px 0 #fff;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  text-align: center;
+  animation: pop 220ms ease-out;
+}
+.panel h2 { margin: 0 0 12px; font-size: 24px; }
+.panel .row { display: flex; gap: 12px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.btn.big {
+  width: auto;
+  min-width: 64px;
+  height: 64px;
+  padding: 0 18px;
+  gap: 8px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+  font-size: 17px;
+}
+.btn.primary { background: linear-gradient(180deg, #4fd3e0, #19a7b8); color: #fff; border-color: #8ae6ef; }
+.btn.wide { width: 100%; justify-content: flex-start; margin-top: 10px; }
+
+.stars { display: flex; gap: 8px; justify-content: center; margin: 4px 0 8px; }
+.stars svg { width: 54px; height: 54px; fill: rgba(33, 53, 71, 0.15); transition: fill 200ms; }
+.stars svg.on { fill: var(--star); stroke: #d99a00; stroke-width: 0.8; animation: pop 300ms ease-out; }
+.result-moves { font-size: 18px; font-weight: 700; color: var(--ink-soft); display: flex; gap: 6px; align-items: center; justify-content: center; }
+.result-moves svg { width: 24px; height: 24px; }
+
+.map {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow-y: auto;
+  padding: 16px 16px 40px;
+  background: radial-gradient(120% 90% at 50% 0%, #c9f3f5 0%, #8fdde6 45%, #5cc3d4 100%);
+  -webkit-overflow-scrolling: touch;
+}
+.map header { display: flex; align-items: center; gap: 12px; max-width: 760px; margin: 0 auto 12px; }
+.map h1 { margin: 0; font-size: 24px; }
+.parks { display: grid; gap: 14px; max-width: 760px; margin: 0 auto; }
+.park {
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 8px 22px rgba(10, 60, 80, 0.2);
+}
+.park .pic { height: 110px; position: relative; overflow: hidden; }
+.park .pic svg { width: 100%; height: 100%; display: block; }
+.park .title { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px 4px; font-weight: 800; font-size: 18px; }
+.park .count { display: flex; align-items: center; gap: 4px; font-size: 15px; color: var(--ink-soft); }
+.park .count svg { width: 18px; height: 18px; fill: var(--star); }
+.lots { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 14px 14px; }
+.lot {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(180deg, #fff, #e3f6f9);
+  box-shadow: 0 3px 8px rgba(10, 60, 80, 0.15);
+  font-weight: 800;
+  font-size: 18px;
+  cursor: pointer;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  padding: 4px 0;
+}
+.lot.current { outline: 3px solid var(--accent); }
+.lot .pips { display: flex; gap: 1px; height: 12px; }
+.lot .pips svg { width: 12px; height: 12px; fill: rgba(33, 53, 71, 0.18); }
+.lot .pips svg.on { fill: var(--star); }
+.park.locked .pic { filter: grayscale(0.7) brightness(0.95); }
+.park.locked .lock { display: flex; align-items: center; gap: 10px; padding: 8px 14px 14px; color: var(--ink-soft); }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; background: rgba(33, 53, 71, 0.18); }
+.dots i.on { background: var(--accent); }
+
+/* ---- motion ---------------------------------------------------------------------------- */
+
+@keyframes wiggle-x { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-7%); } 75% { transform: translateX(7%); } }
+@keyframes wiggle-y { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-7%); } 75% { transform: translateY(7%); } }
+@keyframes shiver-x { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-3%); } 40%, 80% { transform: translateX(3%); } }
+@keyframes shiver-y { 0%, 100% { transform: translateY(0); } 20%, 60% { transform: translateY(-3%); } 40%, 80% { transform: translateY(3%); } }
+@keyframes squash-x { 0%, 100% { transform: scaleX(1); } 40% { transform: scaleX(0.96) scaleY(1.03); } }
+@keyframes squash-y { 0%, 100% { transform: scaleY(1); } 40% { transform: scaleY(0.96) scaleX(1.03); } }
+@keyframes hop { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.1); } 70% { transform: scale(0.97); } }
+@keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes chev { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+@keyframes ghost { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes drag-hand { 0%, 100% { transform: translateX(-14px); } 50% { transform: translateX(14px); } }
+@keyframes glow { 0%, 100% { box-shadow: 0 4px 12px rgba(10, 60, 80, 0.18); } 50% { box-shadow: 0 0 0 6px rgba(255, 216, 77, 0.65), 0 0 22px rgba(255, 216, 77, 0.9); } }
+@keyframes pop { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes plop { 0% { transform: translateY(-14px) scale(1.2); } 60% { transform: translateY(2px) scale(0.95); } 100% { transform: none; } }
+@keyframes waves { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(14px); } }
+@keyframes ringbump { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.95); } }
+
+.wiggle-x .body { animation: wiggle-x 320ms ease-in-out 2; }
+.wiggle-y .body { animation: wiggle-y 320ms ease-in-out 2; }
+.shiver-x .body { animation: shiver-x 260ms linear; }
+.shiver-y .body { animation: shiver-y 260ms linear; }
+.squash-x .body { animation: squash-x 180ms ease-out; }
+.squash-y .body { animation: squash-y 180ms ease-out; }
+.hop .body { animation: hop 420ms ease-out; }
+.ringbump .body { animation: ringbump 160ms ease-out; }
+.veh.coach:not(.held) .body { animation: breathe 1.6s ease-in-out infinite; }
+.waves { animation: waves 6s ease-in-out infinite; }
+
+/* Calm motion: no squash or hop, still waves, 60 ms slides (design §D). Wordless signals
+   that were motion become a highlight instead, so nothing is carried by sound alone. */
+.calm .waves, .calm .coach-hint, .calm .hand, .calm .chev, .calm .ghost, .calm .tool.glow,
+.calm .veh.coach .body, .calm .panel, .calm .stars svg.on, .calm .hud.plop svg { animation: none !important; }
+.calm .wiggle-x .body, .calm .wiggle-y .body, .calm .shiver-x .body, .calm .shiver-y .body,
+.calm .squash-x .body, .calm .squash-y .body, .calm .hop .body, .calm .ringbump .body {
+  animation: none;
+  box-shadow: 0 0 0 5px rgba(255, 216, 77, 0.95);
+  border-radius: 22%;
+}
+.calm .tool.glow { box-shadow: 0 0 0 5px rgba(255, 216, 77, 0.8); }
+.tab-hidden * { animation-play-state: paused !important; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
